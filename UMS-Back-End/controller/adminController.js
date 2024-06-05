@@ -6,32 +6,25 @@ const { generateToken } = require('../utils/generateToken');
 
 const adminLogin = async (req, res) => {
   try {
-    const { email, password } = req.body;
-    const user = await User.findOne({ email })
-    console.log("admin ", user);
-    if (!user) {
-      res.status(401).json({
-        message: "not an admin"
-      });
-    } else {
-      if (user.is_admin === true) {
-        const passwordMatch = await bcrypt.compare(password, user.password)
-        if (!passwordMatch) {
-          return res.status(401).json({
-            message: 'Incorrect password',
-          })
-        }
-
-        const token = generateToken(res, user._id);
-        res.status(200).json({ email: user.email, token });
-      } else {
-        res.status(404).json({ message: 'its not an admin' });
+      const { email, password } = req.body;
+      const user = await User.findOne({ email });
+      if (!user) {
+          res.status(401).json({ message: "User not found" });
+          return;
       }
-    }
+      if (!user.is_admin) {
+          res.status(403).json({ message: "User is not an admin" });
+          return;
+      }
+      const passwordMatch = await bcrypt.compare(password, user.password);
+      if (!passwordMatch) {
+          res.status(401).json({ message: "Incorrect password" });
+          return;
+      }
+      const token = generateToken(res, user._id, true); 
+      res.status(200).json({ email: user.email, token });
   } catch (error) {
-    return res.status(403).json({
-      message: 'User is not an admin',
-    });
+      res.status(500).json({ message: "Server error" });
   }
 };
 
@@ -114,15 +107,33 @@ const updateUserById = async (req, res) => {
 const DeleteUserById =  async (req, res) => {
   try {
     const userId = req.params.id;
-    const user = await User.findById(userId);
+    const user = await User.findByIdAndDelete(userId);
     
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: 'User not found' })
     }
-    await User.findByIdAndDelete(userId);
+   
     res.status(200).json({ message: 'User deleted successfully' });
   } catch (error) {
     console.error('Error deleting user:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+const searchUser = async (req, res) => {
+  try {
+    const { query } = req.query;
+    const regex = new RegExp(query, 'i');
+    const users = await User.find({
+      $or: [
+        { name: regex },
+        { email: regex },
+        { number: regex }
+      ]
+    });
+    res.status(200).json(users);
+  } catch (error) {
+    console.error('Error searching users:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -135,6 +146,7 @@ module.exports = {
   getUserDatas,
   getUserById,
   updateUserById,
-  DeleteUserById
+  DeleteUserById,
+  searchUser
 
 }

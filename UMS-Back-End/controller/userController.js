@@ -58,11 +58,8 @@ const loginUser = asyncHandler(async (req, res) => {
         if (user) {
             console.log("its working");
             const token = generateToken(res, user._id);
-            res.status(200).json({
-                _id: user._id,
-                name: user.name,
-                email: user.email,
-                token
+            res.status(200).json({message:'login Successful',
+                token,userData:user
             });
         } else {
             res.status(400).json({ message: 'Invalid user data' });

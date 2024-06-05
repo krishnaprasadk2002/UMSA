@@ -3,7 +3,8 @@ const express =  require('express')
 const Router = express.Router()
 const { registerUser,loginUser, logout, updateUser } = require( '../controller/userController.js');
 const {protect} = require ('../middleware/authMiddleware.js')
-const {upload} = require('../middleware/multerMiddleware.js')
+const multer = require('multer')
+const path = require('path')
 const User = require('../models/userModel.js')
 
 
@@ -16,31 +17,35 @@ Router.get('/me', protect, async (req, res) => {
     res.status(200).json(req.user);
   });
 
-  Router.post('/upload',protect,(req,res)=>{
-    upload(req,res,async(error)=>{
-      if(error){
-        res.status(400).json({message:error})
-      }else{
-        if(req.file == undefined){
-         res.status(400).json({message:'no image selected to upload!'})
-        }else{
-          try {
-            const user = await User.findById(req.user._id)
-            console.log(user);
-            if(!user){
-              res.status(404).json({message:"user not found"})
-            }else{
-              user.image = `/uploads/${req.file.filename}`,
-              await user.save()
-              res.status(200).json({message:"image uploaded successfull",file: `/uploads/${req.file.filename}`})
-            }
-          } catch (error) {
-            res.status(500).json({ message: 'Server error', error: error.message });
-          }
-        }
+  const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, path.resolve(__dirname, '../uploads/'));
+    },
+    filename: (req, file, cb) => {
+      cb(null, Date.now() + path.extname(file.originalname));
+    }
+  });
+  
+  const upload = multer({ storage: storage });
+  
+  Router.post('/uploadImage', upload.single('image'), async (req, res) => {
+    try {
+      const userId = req.body.userId;
+      const user = await User.findById(userId);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
       }
-    })
-  })
-
+      user.image = req.file.filename;
+      await user.save();
+  
+      return res.status(201).json({
+        message: 'File uploaded and user image updated successfully',
+        file: req.file
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: 'Error occurred during file upload.' });
+    }
+  });
 
 module.exports = Router;

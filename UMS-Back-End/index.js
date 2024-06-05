@@ -5,6 +5,7 @@ const bodyParser = require('body-parser');
 const cors = require('cors')
 const UserRouter = require('./routes/userRoute.js');
 const AdminRouter = require('./routes/adminRouter.js');
+const path = require('path')
 
 
 dotenv.config();
@@ -23,7 +24,7 @@ app.get('/', (req, res) => {
     let data = "Welcome data";
     res.send(data);
 });
-
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/user', UserRouter)
 app.use('/admin', AdminRouter)
 
